@@ -1,0 +1,134 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Pillar 1)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming(req) {
+      return req.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // 1. Employees Collection Rules
+    match /employees/{employeeId} {
+      allow get: if isValidId(employeeId);
+      allow list: if true;
+      allow create, update: if isValidId(employeeId) 
+        && incoming(request).employeeId is string 
+        && incoming(request).employeeId.size() <= 128
+        && incoming(request).name is string 
+        && incoming(request).name.size() <= 100
+        && incoming(request).email is string 
+        && incoming(request).email.size() <= 100
+        && incoming(request).role is string 
+        && (incoming(request).role == 'Teacher' || incoming(request).role == 'Finance' || incoming(request).role == 'Principal' || incoming(request).role == 'Admin' || incoming(request).role == 'Reception')
+        && incoming(request).salary is number 
+        && incoming(request).designation is string 
+        && incoming(request).designation.size() <= 100
+        && incoming(request).phone is string
+        && incoming(request).phone.size() <= 20
+        && incoming(request).status is string 
+        && (incoming(request).status == 'Active' || incoming(request).status == 'Inactive');
+      allow delete: if isValidId(employeeId);
+    }
+
+    // 2. Attendance Collection Rules
+    match /attendance/{attendanceId} {
+      allow get: if isValidId(attendanceId);
+      allow list: if true;
+      allow create, update: if isValidId(attendanceId)
+        && incoming(request).employeeId is string
+        && incoming(request).employeeId.size() <= 128
+        && incoming(request).employeeName is string
+        && incoming(request).employeeName.size() <= 100
+        && incoming(request).date is string
+        && incoming(request).date.size() <= 15
+        && incoming(request).status is string
+        && (incoming(request).status == 'Present' || incoming(request).status == 'Absent' || incoming(request).status == 'Late' || incoming(request).status == 'Leave');
+      allow delete: if isValidId(attendanceId);
+    }
+
+    // 3. Leave Requests Collection Rules
+    match /leaves/{leaveId} {
+      allow get: if isValidId(leaveId);
+      allow list: if true;
+      allow create, update: if isValidId(leaveId)
+        && incoming(request).employeeId is string
+        && incoming(request).employeeId.size() <= 128
+        && incoming(request).employeeName is string
+        && incoming(request).employeeName.size() <= 100
+        && incoming(request).startDate is string
+        && incoming(request).startDate.size() <= 15
+        && incoming(request).endDate is string
+        && incoming(request).endDate.size() <= 15
+        && incoming(request).leaveType is string
+        && (incoming(request).leaveType == 'Sick Leave' || incoming(request).leaveType == 'Casual Leave' || incoming(request).leaveType == 'Maternity Leave' || incoming(request).leaveType == 'Earned Leave')
+        && incoming(request).reason is string
+        && incoming(request).reason.size() <= 500
+        && incoming(request).status is string
+        && (incoming(request).status == 'Pending' || incoming(request).status == 'Approved' || incoming(request).status == 'Rejected');
+      allow delete: if isValidId(leaveId);
+    }
+
+    // 4. Queries Collection Rules
+    match /queries/{queryId} {
+      allow get: if isValidId(queryId);
+      allow list: if true;
+      allow create, update: if isValidId(queryId)
+        && incoming(request).employeeId is string
+        && incoming(request).employeeId.size() <= 128
+        && incoming(request).employeeName is string
+        && incoming(request).employeeName.size() <= 100
+        && incoming(request).subject is string
+        && incoming(request).subject.size() <= 200
+        && incoming(request).description is string
+        && incoming(request).description.size() <= 1000
+        && incoming(request).status is string
+        && (incoming(request).status == 'Open' || incoming(request).status == 'Resolved');
+      allow delete: if isValidId(queryId);
+    }
+
+    // 5. Config Collection Rules
+    match /config/{configId} {
+      allow get: if isValidId(configId);
+      allow list: if true;
+      allow create, update: if isValidId(configId)
+        && incoming(request).checkInTime is string
+        && incoming(request).checkInTime.size() <= 15
+        && incoming(request).checkOutTime is string
+        && incoming(request).checkOutTime.size() <= 15
+        && incoming(request).graceTime is string
+        && incoming(request).graceTime.size() <= 15;
+      allow delete: if isValidId(configId);
+    }
+
+    // 6. Face Enrollments Collection Rules
+    match /face_enrollments/{employeeId} {
+      allow read: if true;
+      allow write, create, update: if isValidId(employeeId);
+    }
+
+    // 7. Holidays Collection Rules
+    match /holidays/{holidayId} {
+      allow get: if isValidId(holidayId);
+      allow list: if true;
+      allow create, update: if isValidId(holidayId)
+        && incoming(request).date is string
+        && incoming(request).date.size() <= 15
+        && incoming(request).title is string
+        && incoming(request).title.size() <= 200;
+      allow delete: if isValidId(holidayId);
+    }
+  }
+}

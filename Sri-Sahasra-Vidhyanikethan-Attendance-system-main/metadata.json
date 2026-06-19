@@ -1,0 +1,6 @@
+{
+  "name": "Sri Sahasra Vidhyanikethan Dashboard",
+  "description": "Comprehensive school operations dashboard for employees, finance, principal, and systems administrator portals featuring attendance, leaves, payroll management and timings control.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

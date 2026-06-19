@@ -1,0 +1,118 @@
+{
+  "entities": {
+    "Employee": {
+      "title": "Employee",
+      "description": "Information about school employees",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string", "description": "The unique ID of the employee" },
+        "name": { "type": "string", "description": "Full name of the employee" },
+        "email": { "type": "string", "format": "email", "description": "Work email address of the employee" },
+        "role": { "type": "string", "enum": ["Teacher", "Finance", "Principal", "Admin", "Reception"], "description": "The dashboard authorization role of the employee" },
+        "salary": { "type": "number", "description": "Staff member monthly salary" },
+        "designation": { "type": "string", "description": "Specific position title" },
+        "phone": { "type": "string", "description": "Contact phone number" },
+        "status": { "type": "string", "enum": ["Active", "Inactive"], "description": "Employment status" }
+      },
+      "required": ["employeeId", "name", "email", "role", "salary", "designation", "status"]
+    },
+    "Attendance": {
+      "title": "Attendance",
+      "description": "Daily employee attendance history record",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string", "description": "Id of the employee" },
+        "employeeName": { "type": "string", "description": "Full name of the employee" },
+        "date": { "type": "string", "description": "Date in YYYY-MM-DD format" },
+        "status": { "type": "string", "enum": ["Present", "Absent", "Late", "Leave"], "description": "Attendance status" },
+        "checkIn": { "type": "string", "description": "Check in time" },
+        "checkOut": { "type": "string", "description": "Check out time" },
+        "remarks": { "type": "string", "description": "Special remarks or notes" }
+      },
+      "required": ["employeeId", "employeeName", "date", "status"]
+    },
+    "LeaveRequest": {
+      "title": "LeaveRequest",
+      "description": "Leave application form details",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string", "description": "Id of applicant" },
+        "employeeName": { "type": "string", "description": "Name of applicant" },
+        "role": { "type": "string", "description": "Role of the employee" },
+        "startDate": { "type": "string", "description": "Leave start date" },
+        "endDate": { "type": "string", "description": "Leave end date" },
+        "leaveType": { "type": "string", "enum": ["Sick Leave", "Casual Leave", "Maternity Leave", "Earned Leave"], "description": "Category of leave" },
+        "reason": { "type": "string", "description": "Brief explanation for leave application" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected"], "description": "Current status of application" },
+        "appliedAt": { "type": "string", "description": "Timestamp string of application" },
+        "approvedBy": { "type": "string", "description": "Name of supervisor who reviewed" },
+        "comments": { "type": "string", "description": "Review comments" }
+      },
+      "required": ["employeeId", "employeeName", "startDate", "endDate", "leaveType", "reason", "status"]
+    },
+    "Query": {
+      "title": "Query",
+      "description": "A support ticket or query raised by an employee",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string", "description": "Id of employee who raised the query" },
+        "employeeName": { "type": "string", "description": "Name of employee who raised the query" },
+        "subject": { "type": "string", "description": "Query subject heading" },
+        "description": { "type": "string", "description": "Comprehensive explanation of query details" },
+        "status": { "type": "string", "enum": ["Open", "Resolved"], "description": "Query status" },
+        "createdAt": { "type": "string", "description": "Created time" },
+        "resolvedAt": { "type": "string", "description": "Resolution timestamp" },
+        "resolvedBy": { "type": "string", "description": "Who resolved the query" },
+        "response": { "type": "string", "description": "Reply contents" }
+      },
+      "required": ["employeeId", "employeeName", "subject", "description", "status"]
+    },
+    "Config": {
+      "title": "Config",
+      "description": "School operational settings",
+      "type": "object",
+      "properties": {
+        "checkInTime": { "type": "string", "description": "Default start time for employees" },
+        "checkOutTime": { "type": "string", "description": "Default checkout time for employees" },
+        "graceTime": { "type": "string", "description": "Default daily checkin grace period limit" }
+      },
+      "required": ["checkInTime", "checkOutTime", "graceTime"]
+    },
+    "Holiday": {
+      "title": "Holiday",
+      "description": "Custom school holidays created by administrators",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "description": "Holiday date in YYYY-MM-DD format" },
+        "title": { "type": "string", "description": "The title or reason of the holiday" }
+      },
+      "required": ["date", "title"]
+    }
+  },
+  "firestore": {
+    "/employees/{employeeId}": {
+      "schema": "Employee",
+      "description": "Collection storing metadata for school employees"
+    },
+    "/attendance/{attendanceId}": {
+      "schema": "Attendance",
+      "description": "Collection of employee daily attendance history records"
+    },
+    "/leaves/{leaveId}": {
+      "schema": "LeaveRequest",
+      "description": "Collection tracking leave application requests"
+    },
+    "/queries/{queryId}": {
+      "schema": "Query",
+      "description": "Collection of queries and feedback raised by personnel"
+    },
+    "/config/{configId}": {
+      "schema": "Config",
+      "description": "Collection storing overall config options such as school timings"
+    },
+    "/holidays/{holidayId}": {
+      "schema": "Holiday",
+      "description": "Collection storing public or custom school holidays"
+    }
+  }
+}
