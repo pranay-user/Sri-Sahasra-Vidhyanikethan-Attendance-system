@@ -125,6 +125,9 @@ export default function ReceptionKiosk({ onClose }: ReceptionKioskProps) {
 
   // Hardware / Stream state references for active scanner/capture modal
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+// Dedicated webcam for enrollment modal
+const enrollVideoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -311,34 +314,47 @@ export default function ReceptionKiosk({ onClose }: ReceptionKioskProps) {
   }, [viewState, enrollingEmployee]);
 
   const setupCamera = async () => {
-    setCameraError(null);
-    try {
-      if (stream) {
-        stopCamera();
-      }
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: 'user'
-        },
-        audio: false
-      });
-      setStream(mediaStream);
-      // Give a tiny timeout so element mounts
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-          videoRef.current.onloadedmetadata = () => {
-            videoRef.current?.play().catch(e => console.warn('Video element play interrupted safely', e));
-          };
-        }
-      }, 100);
-    } catch (err) {
-      console.error('Webcam initialization failed', err);
-      setCameraError('Camera access denied or device is already occupied. Please grant frame dimensions permission.');
+  setCameraError(null);
+
+  try {
+    if (stream) {
+      stopCamera();
     }
-  };
+
+    const mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: "user",
+      },
+      audio: false,
+    });
+
+    setStream(mediaStream);
+
+    setTimeout(() => {
+      const targetVideo = enrollingEmployee
+        ? enrollVideoRef.current
+        : videoRef.current;
+
+      if (targetVideo) {
+        targetVideo.srcObject = mediaStream;
+
+        targetVideo.onloadedmetadata = () => {
+          targetVideo.play().catch((err) => {
+            console.warn("Video play failed", err);
+          });
+        };
+      }
+    }, 100);
+  } catch (err) {
+    console.error("Camera initialization failed", err);
+
+    setCameraError(
+      "Camera access denied or already in use."
+    );
+  }
+};
 
   const stopCamera = () => {
     if (stream) {
@@ -346,8 +362,12 @@ export default function ReceptionKiosk({ onClose }: ReceptionKioskProps) {
       setStream(null);
     }
     if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+  videoRef.current.srcObject = null;
+}
+
+if (enrollVideoRef.current) {
+  enrollVideoRef.current.srcObject = null;
+}
   };
 
   // Canvas Drawing Loop
@@ -999,40 +1019,111 @@ export default function ReceptionKiosk({ onClose }: ReceptionKioskProps) {
 
   // Handle Enrollment camera frame grab
   const handleCaptureEnrollSnapshot = () => {
-    if (!stream) {
-      setEnrollErrorMsg('Camera stream not active.');
-      return;
-    }
-    if (!enrollingEmployee) return;
+  if (!stream) {
+    setEnrollErrorMsg("Camera stream not active.");
+    return;
+  }
 
-    setEnrollErrorMsg(null);
-    setEnrollSuccessMsg(null);
+  if (!enrollingEmployee) {
+    return;
+  }
 
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = 300;
-    tempCanvas.height = 300;
-    const tempCtx = tempCanvas.getContext('2d');
+  const activeVideo = enrollVideoRef.current;
 
-    if (tempCtx && videoRef.current) {
-      const vWidth = videoRef.current.videoWidth || 640;
-      const vHeight = videoRef.current.videoHeight || 480;
-      const cropSize = Math.min(vWidth, vHeight, 400);
-      const startX = (vWidth - cropSize) / 2;
-      const startY = (vHeight - cropSize) / 2;
+  if (!activeVideo) {
+    setEnrollErrorMsg("Camera feed unavailable.");
+    return;
+  }
 
-      tempCtx.drawImage(
-        videoRef.current,
-        startX, startY, cropSize, cropSize,
-        0, 0, 300, 300
-      );
+  setEnrollErrorMsg(null);
+  setEnrollSuccessMsg(null);
 
-      const base64Data = tempCanvas.toDataURL('image/jpeg', 0.85);
-      setEnrollPhoto(base64Data);
-      playBeep(1200, 0.05, 'triangle');
-    } else {
-      setEnrollErrorMsg('Unable to render frame buffers to crop canvas.');
-    }
-  };
+  const canvas = document.createElement("canvas");
+
+  canvas.width = 640;
+  canvas.height = 640;
+
+  const ctx = canvas.getContext("2d");
+
+  if (!ctx) {
+    setEnrollErrorMsg("Canvas initialization failed.");
+    return;
+  }
+
+  const videoWidth = activeVideo.videoWidth;
+  const videoHeight = activeVideo.videoHeight;
+
+  const cropSize = Math.min(
+    videoWidth,
+    videoHeight
+  );
+
+  const startX =
+    (videoWidth - cropSize) / 2;
+
+  const startY =
+    (videoHeight - cropSize) / 2;
+
+  ctx.drawImage(
+    activeVideo,
+    startX,
+    startY,
+    cropSize,
+    cropSize,
+    0,
+    0,
+    640,
+    640
+  );
+
+  // Lighting validation
+
+  const imageData = ctx.getImageData(
+    0,
+    0,
+    640,
+    640
+  );
+
+  let brightness = 0;
+
+  for (
+    let i = 0;
+    i < imageData.data.length;
+    i += 4
+  ) {
+    brightness +=
+      (imageData.data[i] +
+        imageData.data[i + 1] +
+        imageData.data[i + 2]) /
+      3;
+  }
+
+  brightness /=
+    imageData.data.length / 4;
+
+  if (brightness < 50) {
+    setEnrollErrorMsg(
+      "Lighting too low. Please move to a brighter area."
+    );
+    return;
+  }
+
+  const image =
+    canvas.toDataURL(
+      "image/jpeg",
+      0.95
+    );
+
+  setEnrollPhoto(image);
+
+  playBeep(
+    1200,
+    0.05,
+    "triangle"
+  );
+};
+    
 
   const handleSaveEnrollment = async () => {
     if (!enrollingEmployee || !enrollPhoto) {
@@ -1067,6 +1158,10 @@ export default function ReceptionKiosk({ onClose }: ReceptionKioskProps) {
         setEnrollingEmployee(null);
         setEnrollPhoto(null);
         setEnrollSuccessMsg(null);
+        setEnrollErrorMsg(null);
+        if (enrollVideoRef.current) {
+          enrollVideoRef.current.srcObject = null;
+        }
       }, 2500);
 
     } catch (err) {
@@ -1981,7 +2076,7 @@ export default function ReceptionKiosk({ onClose }: ReceptionKioskProps) {
                                           Enrolled
                                         </div>
                                         <button
-                                          onClick={() => { setEnrollingEmployee(emp); setEnrollPhoto(enrolledFaces[emp.employeeId].photoUrl); }}
+                                          onClick={() => { setEnrollingEmployee(emp); setEnrollPhoto(null); setEnrollSuccessMsg(null);  setEnrollErrorMsg(null);setTimeout(() => {    setupCamera();  }, 100); }}
                                           title="Re-enroll / Re-entry Face Recognition"
                                           className="p-1 px-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-lg text-[10px] font-bold cursor-pointer transition-colors flex items-center gap-1 font-mono"
                                         >
@@ -1998,7 +2093,17 @@ export default function ReceptionKiosk({ onClose }: ReceptionKioskProps) {
                                       </div>
                                     ) : (
                                       <button
-                                        onClick={() => { setEnrollingEmployee(emp); setEnrollPhoto(null); }}
+                                        onClick={() => {
+                                                        setEnrollingEmployee(emp);
+
+                                                        setEnrollPhoto(null);
+                                                        setEnrollSuccessMsg(null);
+                                                        setEnrollErrorMsg(null);
+
+                                                        setTimeout(() => {
+                                                          setupCamera();
+                                                        }, 100);
+                                                      }}
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-100 text-[#1b5dfc] rounded-xl text-[10px] font-bold cursor-pointer transition-colors"
                                       >
                                         <Camera className="h-3.5 w-3.5" />
@@ -2387,7 +2492,7 @@ export default function ReceptionKiosk({ onClose }: ReceptionKioskProps) {
                     
                     {stream && (
                       <video
-                        ref={videoRef}
+                        ref={enrollvideoRef}
                         autoPlay
                         playsInline
                         muted
